@@ -1,0 +1,28 @@
+services:
+  qr-bench:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_PATH: /app/data/qrbench.db
+      UPLOAD_DIR: /app/uploads
+      INBOX_DIR: /app/inbox
+      VIES_TIMEOUT: "5.0"
+      # Off by default so the container works with zero network access.
+      # Flip to "true" to enable real VIES supplier lookups.
+      VIES_ENABLED: "false"
+    volumes:
+      - qrbench-data:/app/data
+      - qrbench-uploads:/app/uploads
+      - ./inbox:/app/inbox
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status == 200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  qrbench-data:
+  qrbench-uploads:

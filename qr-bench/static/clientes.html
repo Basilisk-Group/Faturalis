@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qr-bench — clientes</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b21;
+    --panel-2: #1e232b;
+    --border: #2a303a;
+    --text: #e6e9ef;
+    --muted: #8b93a1;
+    --accent: #5aa9ff;
+    --good: #3fbf7f;
+    --warn: #e0a83f;
+    --bad: #e0554f;
+    --purple: #b98af0;
+    --mono: "SF Mono", "Fira Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 10px; }
+  a { color: var(--accent); }
+  .subtitle { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
+  .top-links { display: flex; gap: 14px; align-items: center; }
+  .top-links a { font-size: 12px; color: var(--muted); text-decoration: none; }
+  .top-links a:hover { color: var(--accent); }
+  .lang-switch { display: flex; gap: 4px; flex-shrink: 0; }
+  .lang-switch button {
+    font-size: 11px; padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted); cursor: pointer;
+  }
+  .lang-switch button.active { background: rgba(90,169,255,0.15); color: var(--accent); border-color: var(--accent); }
+
+  #dropzone {
+    border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center;
+    color: var(--muted); cursor: pointer; margin-bottom: 24px; transition: border-color 0.15s, color 0.15s;
+  }
+  #dropzone.drag-over { border-color: var(--accent); color: var(--accent); }
+  #dropzone strong { color: var(--text); }
+
+  section { margin-bottom: 24px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+
+  table { width: 100%; min-width: 900px; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr.clickable { cursor: pointer; }
+  tr.clickable:hover { background: var(--panel-2); }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+  .card .value { font-size: 22px; font-weight: 600; }
+  .card .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .status-recebido { background: rgba(139,147,161,0.15); color: var(--muted); }
+  .status-extraido { background: rgba(90,169,255,0.15); color: var(--accent); }
+  .status-a_rever { background: rgba(224,168,63,0.15); color: var(--warn); }
+  .status-validado { background: rgba(63,191,127,0.15); color: var(--good); }
+  .status-exportado { background: rgba(185,138,240,0.15); color: var(--purple); }
+
+  .flag-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin: 2px 4px 2px 0; cursor: pointer; border: none; font-family: inherit; }
+  .flag-badge.sev-erro { background: rgba(224,85,79,0.15); color: var(--bad); }
+  .flag-badge.sev-aviso { background: rgba(224,168,63,0.15); color: var(--warn); }
+  .flag-badge.sev-info { background: rgba(90,169,255,0.15); color: var(--accent); }
+  .flag-popover {
+    position: absolute; z-index: 60; max-width: 320px;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-size: 12px; line-height: 1.5; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .flag-popover .fp-title { font-weight: 700; margin-bottom: 6px; }
+  .flag-popover .fp-message { margin-bottom: 8px; }
+  .flag-popover .fp-section { margin-top: 6px; }
+  .flag-popover .fp-k { display: block; font-size: 10px; text-transform: uppercase; color: var(--muted); margin-bottom: 2px; }
+
+  .actions { display: flex; gap: 4px; flex-wrap: nowrap; white-space: nowrap; }
+  .actions button, .btn {
+    font-size: 11px; padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); cursor: pointer;
+  }
+  .actions button:hover, .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.primary { background: rgba(90,169,255,0.15); color: var(--accent); border-color: var(--accent); }
+  .btn.danger { color: var(--bad); }
+
+  .detail-row td { background: var(--panel-2); }
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; margin-bottom: 12px; font-family: var(--mono); font-size: 12px; }
+  .detail-grid div span.k { color: var(--muted); margin-right: 6px; }
+  details.raw-qr { margin-top: 10px; }
+  details.raw-qr summary { cursor: pointer; font-size: 11px; color: var(--muted); }
+  pre.raw { white-space: pre-wrap; word-break: break-all; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 11px; color: var(--accent); margin: 6px 0 0; }
+
+  .corrections-list { margin-top: 10px; font-size: 12px; }
+  .corrections-list .item { padding: 6px 0; border-top: 1px solid var(--border); color: var(--muted); }
+  .corrections-list .item b { color: var(--text); }
+
+  .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
+  .client-title { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .client-title h1 { margin: 0; }
+  .client-nif { color: var(--muted); font-family: var(--mono); font-size: 13px; }
+  input.inline-edit, textarea.inline-edit {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 6px 8px; font-size: 13px; font-family: inherit;
+  }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: flex;
+    align-items: center; justify-content: center; z-index: 100;
+  }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 20px; width: 480px; max-width: 92vw; max-height: 85vh; overflow-y: auto;
+  }
+  .modal h3 { margin: 0 0 14px; font-size: 15px; }
+  .modal .field { margin-bottom: 12px; }
+  .modal .field label { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 4px; }
+  .modal .field input:not([type="checkbox"]):not([type="radio"]),
+  .modal .field select,
+  .modal .field textarea {
+    width: 100%; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: 8px; font-size: 13px; font-family: inherit;
+  }
+  .modal .field textarea { resize: vertical; min-height: 60px; }
+  .modal .radio-group { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; }
+  .modal .radio-group label { display: flex; align-items: center; gap: 5px; color: var(--text); text-transform: none; letter-spacing: normal; font-size: 13px; }
+  .modal .actions-row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .modal .checkbox-row { display: flex; align-items: center; justify-content: flex-start; gap: 8px; font-size: 13px; }
+  input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); width: 15px !important; height: 15px !important; flex: 0 0 auto; cursor: pointer; }
+  .modal .checkbox-row label { cursor: pointer; flex: 0 0 auto; }
+</style>
+</head>
+<body>
+
+<div class="top-row">
+  <div>
+    <h1 data-i18n="appTitle"></h1>
+    <p class="subtitle" data-i18n="subtitle"></p>
+  </div>
+  <div class="top-links">
+    <a href="/glossario" target="_blank" data-i18n="glossaryLink"></a>
+    <a href="/bench" data-i18n="benchLink"></a>
+    <div class="lang-switch" id="langSwitch">
+      <button data-lang="pt" onclick="setLang('pt')">PT</button>
+      <button data-lang="en" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</div>
+
+<div id="dropzone">
+  <span id="dropzoneText"></span>
+  <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.pdf" hidden>
+</div>
+
+<div id="listView">
+  <section>
+    <h2 data-i18n="clientsHeading"></h2>
+    <div class="panel" style="padding:0; overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th data-i18n="colClient"></th>
+            <th data-i18n="colNif"></th>
+            <th data-i18n="colDocs"></th>
+            <th data-i18n="colReview"></th>
+            <th data-i18n="colValue"></th>
+          </tr>
+        </thead>
+        <tbody id="clientsBody"></tbody>
+      </table>
+      <div class="empty" id="clientsEmpty" style="display:none;" data-i18n="noClients"></div>
+    </div>
+  </section>
+</div>
+
+<div id="detailView" style="display:none;">
+  <div class="header-row">
+    <div class="client-title">
+      <a href="/" data-i18n="backToClients" style="font-size:13px;"></a>
+      <h1 id="clientName"></h1>
+      <span class="client-nif" id="clientNif"></span>
+    </div>
+    <div class="actions">
+      <button class="btn" id="renameBtn" onclick="openRenameDialog()" data-i18n="renameBtn"></button>
+      <button class="btn" onclick="bulkValidate()" data-i18n="bulkValidateBtn"></button>
+      <button class="btn primary" onclick="openExportDialog()" data-i18n="exportBtn"></button>
+    </div>
+  </div>
+
+  <div class="cards">
+    <div class="card"><div class="value" id="statDocs">0</div><div class="label" data-i18n="cardDocs"></div></div>
+    <div class="card"><div class="value" id="statReview">0</div><div class="label" data-i18n="cardReview"></div></div>
+    <div class="card"><div class="value" id="statValue">0,00 €</div><div class="label" data-i18n="cardValueTotal"></div></div>
+  </div>
+
+  <section>
+    <div class="header-row">
+      <h2 style="margin:0;" data-i18n="documentsHeading"></h2>
+    </div>
+    <div class="panel" style="padding:0; overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th></th>
+            <th data-i18n="colFilename"></th>
+            <th data-i18n="colDate"></th>
+            <th data-i18n="colSupplier"></th>
+            <th data-i18n="colTotal"></th>
+            <th data-i18n="colStatus"></th>
+            <th><span data-i18n="colFlags"></span></th>
+            <th data-i18n="colActions"></th>
+          </tr>
+        </thead>
+        <tbody id="docsBody"></tbody>
+      </table>
+      <div class="empty" id="docsEmpty" style="display:none;" data-i18n="noDocuments"></div>
+    </div>
+  </section>
+</div>
+
+<div id="modalRoot"></div>
+
+<script>
+const REFRESH_MS = 4000;
+let uploading = false;
+let currentClientId = null; // null on list view, "unattributed", or a numeric-string id
+let latestClients = [];
+let latestDocs = [];
+let flagRegistry = {};
+let expandedDocId = null;
+
+const I18N = {
+  pt: {
+    appTitle: 'qr-bench — clientes',
+    subtitle: 'Documentos organizados por cliente, prontos a validar e exportar.',
+    glossaryLink: 'Glossário de alertas',
+    benchLink: 'Ferramenta de benchmark (interno)',
+    dropzoneHtml: '<strong>Largue</strong> ficheiros .jpg / .png / .pdf aqui, ou clique para escolher.',
+    uploading: (n) => `A carregar ${n} ficheiro(s)…`,
+    clientsHeading: 'Clientes',
+    colClient: 'Cliente', colNif: 'NIF', colDocs: 'Documentos', colReview: 'A rever', colValue: 'Valor (período atual)',
+    noClients: 'Ainda não há documentos.',
+    backToClients: '← Clientes',
+    renameBtn: 'Editar', bulkValidateBtn: 'Validar todos os limpos', exportBtn: 'Exportar',
+    cardDocs: 'Documentos', cardReview: 'A rever', cardValueTotal: 'Valor total (documentos apresentados)',
+    documentsHeading: 'Documentos',
+    colFilename: 'Ficheiro', colDate: 'Data', colSupplier: 'Fornecedor', colTotal: 'Total',
+    colStatus: 'Estado', colFlags: 'Alertas', colActions: 'Ações',
+    noDocuments: 'Este cliente ainda não tem documentos.',
+    statusRecebido: 'Recebido', statusExtraido: 'Extraído', statusARever: 'A rever',
+    statusValidado: 'Validado', statusExportado: 'Exportado',
+    actValidar: 'Validar', actCorrigir: 'Corrigir', actRejeitar: 'Rejeitar',
+    rawQrToggle: 'Mostrar QR em bruto',
+    noFieldsParsed: 'Nenhum campo interpretado.',
+    correctionsHeading: 'Histórico de correções',
+    correctionLine: (field, from, to, who) => `<b>${field}</b>: "${from}" → "${to}" (${who || 'desconhecido'})`,
+    renameTitle: 'Editar cliente', fieldName: 'Nome', fieldNotes: 'Notas',
+    save: 'Guardar', cancel: 'Cancelar',
+    correctTitle: 'Corrigir documento', fieldChangedBy: 'O seu nome', saveAndValidate: 'Guardar e validar',
+    rejectTitle: 'Rejeitar documento', fieldReason: 'Motivo',
+    exportTitle: 'Exportar documentos',
+    exportFormat: 'Formato', exportScope: 'Âmbito', exportScopeClient: 'Este cliente',
+    exportScopeAll: 'Todos os clientes', exportScopeFilter: 'Filtro atual',
+    exportPeriod: 'Período', exportPeriodMonth: 'Mês', exportPeriodRange: 'Intervalo de datas',
+    exportStatus: 'Estado', exportIncludeUnvalidated: 'Incluir não validados',
+    exportPreset: 'Modelo de colunas', exportSubmit: 'Exportar',
+    fieldA: 'NIF Emitente', fieldB: 'NIF Adquirente', fieldD: 'Tipo', fieldF: 'Data (AAAAMMDD)',
+    fieldG: 'Número do Documento', fieldH: 'ATCUD', fieldN: 'IVA', fieldO: 'Total', fieldP: 'Retenção',
+    unattributedName: 'Não atribuído',
+  },
+  en: {
+    appTitle: 'qr-bench — clients',
+    subtitle: 'Documents organized by client, ready to validate and export.',
+    glossaryLink: 'Flag glossary',
+    benchLink: 'Benchmark tool (internal)',
+    dropzoneHtml: '<strong>Drop</strong> .jpg / .png / .pdf files here, or click to choose.',
+    uploading: (n) => `Uploading ${n} file(s)…`,
+    clientsHeading: 'Clients',
+    colClient: 'Client', colNif: 'NIF', colDocs: 'Documents', colReview: 'Needs review', colValue: 'Value (current period)',
+    noClients: 'No documents yet.',
+    backToClients: '← Clients',
+    renameBtn: 'Edit', bulkValidateBtn: 'Validate all clean', exportBtn: 'Export',
+    cardDocs: 'Documents', cardReview: 'Needs review', cardValueTotal: 'Total value (documents shown)',
+    documentsHeading: 'Documents',
+    colFilename: 'Filename', colDate: 'Date', colSupplier: 'Supplier', colTotal: 'Total',
+    colStatus: 'Status', colFlags: 'Flags', colActions: 'Actions',
+    noDocuments: 'This client has no documents yet.',
+    statusRecebido: 'Received', statusExtraido: 'Extracted', statusARever: 'Needs review',
+    statusValidado: 'Validated', statusExportado: 'Exported',
+    actValidar: 'Validate', actCorrigir: 'Correct', actRejeitar: 'Reject',
+    rawQrToggle: 'Show raw QR',
+    noFieldsParsed: 'No fields parsed.',
+    correctionsHeading: 'Correction history',
+    correctionLine: (field, from, to, who) => `<b>${field}</b>: "${from}" → "${to}" (${who || 'unknown'})`,
+    renameTitle: 'Edit client', fieldName: 'Name', fieldNotes: 'Notes',
+    save: 'Save', cancel: 'Cancel',
+    correctTitle: 'Correct document', fieldChangedBy: 'Your name', saveAndValidate: 'Save and validate',
+    rejectTitle: 'Reject document', fieldReason: 'Reason',
+    exportTitle: 'Export documents',
+    exportFormat: 'Format', exportScope: 'Scope', exportScopeClient: 'This client',
+    exportScopeAll: 'All clients', exportScopeFilter: 'Current filter',
+    exportPeriod: 'Period', exportPeriodMonth: 'Month', exportPeriodRange: 'Date range',
+    exportStatus: 'Status', exportIncludeUnvalidated: 'Include unvalidated',
+    exportPreset: 'Column preset', exportSubmit: 'Export',
+    fieldA: 'Issuer NIF', fieldB: 'Acquirer NIF', fieldD: 'Type', fieldF: 'Date (YYYYMMDD)',
+    fieldG: 'Document Number', fieldH: 'ATCUD', fieldN: 'VAT', fieldO: 'Total', fieldP: 'Withholding',
+    unattributedName: 'Unattributed',
+  },
+};
+
+const STATUS_KEYS = {
+  recebido: 'statusRecebido', extraido: 'statusExtraido', a_rever: 'statusARever',
+  validado: 'statusValidado', exportado: 'statusExportado',
+};
+
+const CORRECTABLE_FIELDS = ['A', 'B', 'D', 'F', 'G', 'H', 'N', 'O', 'P'];
+
+let currentLang = localStorage.getItem('qrbench_lang') === 'en' ? 'en' : 'pt';
+
+function t(key, ...args) {
+  const entry = (I18N[currentLang] && I18N[currentLang][key]) ?? I18N.pt[key] ?? key;
+  return typeof entry === 'function' ? entry(...args) : entry;
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function fmtEur(x) {
+  const n = Number(x) || 0;
+  return n.toLocaleString('pt-PT', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function fmtDate(yyyymmdd) {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd || '—';
+  return `${yyyymmdd.slice(6,8)}/${yyyymmdd.slice(4,6)}/${yyyymmdd.slice(0,4)}`;
+}
+
+async function fetchJSON(url, opts) {
+  const res = await fetch(url, opts);
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`${url} -> ${res.status} ${body}`);
+  }
+  if (res.status === 204) return null;
+  return res.json();
+}
+
+function applyStaticText() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.getElementById('dropzoneText').innerHTML = t('dropzoneHtml');
+  document.documentElement.lang = currentLang === 'pt' ? 'pt-PT' : 'en';
+  document.querySelectorAll('#langSwitch button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === currentLang);
+  });
+}
+
+function setLang(lang) {
+  currentLang = lang === 'en' ? 'en' : 'pt';
+  localStorage.setItem('qrbench_lang', currentLang);
+  applyStaticText();
+  render();
+}
+
+async function loadFlagRegistry() {
+  try {
+    flagRegistry = await fetchJSON('/api/flags');
+  } catch (err) {
+    console.error('failed to load flag registry', err);
+  }
+}
+
+// ---------- routing ----------
+
+function parseRoute() {
+  const match = window.location.pathname.match(/^\/clientes\/(.+)$/);
+  currentClientId = match ? decodeURIComponent(match[1]) : null;
+}
+
+// ---------- rendering: list view ----------
+
+function renderClientsList() {
+  const tbody = document.getElementById('clientsBody');
+  const empty = document.getElementById('clientsEmpty');
+  if (latestClients.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = latestClients.map(c => {
+    const routeId = c.id === null ? 'unattributed' : c.id;
+    const displayName = c.id === null ? t('unattributedName') : c.name;
+    return `
+      <tr class="clickable" onclick="navigateToClient('${routeId}')">
+        <td>${escapeHtml(displayName)}</td>
+        <td style="font-family:var(--mono);color:var(--muted);">${escapeHtml(c.nif) || '—'}</td>
+        <td>${c.document_count}</td>
+        <td>${c.review_count}</td>
+        <td>${fmtEur(c.total_value_current_period)}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function navigateToClient(id) {
+  window.history.pushState({}, '', `/clientes/${id}`);
+  parseRoute();
+  refresh();
+}
+
+// ---------- rendering: detail view ----------
+
+function statusBadge(status) {
+  const key = STATUS_KEYS[status] || 'statusRecebido';
+  return `<span class="badge status-${escapeHtml(status)}">${escapeHtml(t(key))}</span>`;
+}
+
+let pinnedPopoverKey = null;
+let popoverHideTimer = null;
+
+function findFlag(docId, flagIndex) {
+  const doc = latestDocs.find(d => d.id === docId);
+  return doc ? (doc.validation_flags || [])[flagIndex] || null : null;
+}
+
+function closeFlagPopover() {
+  const existing = document.getElementById('flagPopover');
+  if (existing) existing.remove();
+  pinnedPopoverKey = null;
+}
+
+function positionPopover(popover, anchorEl) {
+  document.body.appendChild(popover);
+  const rect = anchorEl.getBoundingClientRect();
+  let left = rect.left + window.scrollX;
+  const maxLeft = window.scrollX + document.documentElement.clientWidth - popover.offsetWidth - 12;
+  left = Math.max(window.scrollX + 12, Math.min(left, maxLeft));
+  popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
+  popover.style.left = `${left}px`;
+}
+
+function openFlagPopover(docId, flagIndex, anchorEl) {
+  const flag = findFlag(docId, flagIndex);
+  if (!flag) return;
+  closeFlagPopover();
+  const registryEntry = flagRegistry[flag.code] || {};
+  const popover = document.createElement('div');
+  popover.id = 'flagPopover';
+  popover.className = 'flag-popover';
+  popover.innerHTML = `
+    <div class="fp-title">${escapeHtml(registryEntry.label_pt || flag.code)}</div>
+    <div class="fp-message">${escapeHtml(flag.message)}</div>
+    <div class="fp-section"><span class="fp-k">Causa</span>${escapeHtml(registryEntry.cause_pt || '')}</div>
+    <div class="fp-section"><span class="fp-k">Ação</span>${escapeHtml(registryEntry.action_pt || '')}</div>
+  `;
+  popover.addEventListener('mouseenter', () => { if (popoverHideTimer) clearTimeout(popoverHideTimer); });
+  popover.addEventListener('mouseleave', () => scheduleHideFlagPopover());
+  positionPopover(popover, anchorEl);
+}
+
+function showFlagPopover(evt, docId, flagIndex) {
+  if (popoverHideTimer) { clearTimeout(popoverHideTimer); popoverHideTimer = null; }
+  if (pinnedPopoverKey) return;
+  openFlagPopover(docId, flagIndex, evt.currentTarget);
+}
+
+function scheduleHideFlagPopover() {
+  if (pinnedPopoverKey) return;
+  popoverHideTimer = setTimeout(closeFlagPopover, 200);
+}
+
+function toggleFlagPopover(evt, docId, flagIndex) {
+  const key = `${docId}:${flagIndex}`;
+  if (pinnedPopoverKey === key) { closeFlagPopover(); return; }
+  pinnedPopoverKey = key;
+  openFlagPopover(docId, flagIndex, evt.currentTarget);
+}
+
+document.addEventListener('click', (evt) => {
+  const popover = document.getElementById('flagPopover');
+  if (popover && !popover.contains(evt.target) && !evt.target.classList.contains('flag-badge')) {
+    closeFlagPopover();
+  }
+});
+
+function flagBadges(doc) {
+  return (doc.validation_flags || []).map((f, i) => {
+    const registryEntry = flagRegistry[f.code] || {};
+    const label = escapeHtml(registryEntry.label_pt || f.code);
+    return `<span class="flag-badge sev-${escapeHtml(f.severity)}"
+      onclick="event.stopPropagation(); toggleFlagPopover(event, ${doc.id}, ${i})"
+      onmouseenter="showFlagPopover(event, ${doc.id}, ${i})"
+      onmouseleave="scheduleHideFlagPopover()"
+      >${label}</span>`;
+  }).join('');
+}
+
+function detailRowHtml(doc) {
+  const fields = doc.all_fields || {};
+  const rows = Object.entries(fields).map(([k, v]) => `<div><span class="k">${escapeHtml(k)}</span>${escapeHtml(v)}</div>`).join('');
+  const corrections = correctionsCache[doc.id] || [];
+  const correctionsHtml = corrections.length
+    ? `<div class="corrections-list"><strong>${escapeHtml(t('correctionsHeading'))}</strong>` +
+      corrections.map(c => `<div class="item">${t('correctionLine', escapeHtml(c.field_key), escapeHtml(c.original_value), escapeHtml(c.corrected_value), escapeHtml(c.changed_by))}</div>`).join('') +
+      `</div>`
+    : '';
+  return `
+    <tr class="detail-row"><td colspan="8">
+      <div class="detail-grid">${rows || `<div style="color:var(--muted)">${escapeHtml(t('noFieldsParsed'))}</div>`}</div>
+      ${correctionsHtml}
+      <details class="raw-qr">
+        <summary>${escapeHtml(t('rawQrToggle'))}</summary>
+        <pre class="raw">${escapeHtml(doc.raw_qr) || '—'}</pre>
+      </details>
+    </td></tr>
+  `;
+}
+
+function renderDocumentsTable() {
+  const tbody = document.getElementById('docsBody');
+  const empty = document.getElementById('docsEmpty');
+  if (latestDocs.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  tbody.innerHTML = latestDocs.map(doc => {
+    const nameLabel = doc.page_number ? `${doc.filename} (p.${doc.page_number})` : doc.filename;
+    const supplier = doc.supplier_name || doc.field_a || '—';
+    const mainRow = `
+      <tr class="clickable" onclick="toggleExpand(${doc.id})">
+        <td><img src="${doc.thumbnail_b64 || ''}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid var(--border);"></td>
+        <td>${escapeHtml(nameLabel)}</td>
+        <td>${fmtDate(doc.field_f)}</td>
+        <td>${escapeHtml(supplier)}</td>
+        <td>${escapeHtml((doc.effective_fields && doc.effective_fields.O) || doc.field_o) || '—'}</td>
+        <td>${statusBadge(doc.status)}</td>
+        <td>${flagBadges(doc) || '—'}</td>
+        <td class="actions" onclick="event.stopPropagation()">
+          <button onclick="validateDocument(${doc.id})">${escapeHtml(t('actValidar'))}</button>
+          <button onclick="openCorrectDialog(${doc.id})">${escapeHtml(t('actCorrigir'))}</button>
+          <button class="danger" onclick="openRejectDialog(${doc.id})">${escapeHtml(t('actRejeitar'))}</button>
+        </td>
+      </tr>
+    `;
+    return expandedDocId === doc.id ? mainRow + detailRowHtml(doc) : mainRow;
+  }).join('');
+}
+
+let correctionsCache = {};
+
+async function toggleExpand(id) {
+  closeFlagPopover();
+  if (expandedDocId === id) {
+    expandedDocId = null;
+    renderDocumentsTable();
+    return;
+  }
+  expandedDocId = id;
+  if (!correctionsCache[id]) {
+    try {
+      correctionsCache[id] = await fetchJSON(`/api/documents/${id}/corrections`);
+    } catch (err) {
+      correctionsCache[id] = [];
+    }
+  }
+  renderDocumentsTable();
+}
+
+// ---------- data loading ----------
+
+async function loadListView() {
+  latestClients = await fetchJSON('/api/clients');
+  renderClientsList();
+}
+
+async function loadDetailView() {
+  const [client, docs] = await Promise.all([
+    currentClientId === 'unattributed' ? Promise.resolve(null) : fetchJSON(`/api/clients/${currentClientId}`).catch(() => null),
+    fetchJSON(`/api/clients/${currentClientId}/documents`),
+  ]);
+  latestDocs = docs;
+
+  if (currentClientId === 'unattributed') {
+    document.getElementById('clientName').textContent = t('unattributedName');
+    document.getElementById('clientNif').textContent = '';
+    document.getElementById('renameBtn').style.display = 'none';
+  } else if (client) {
+    document.getElementById('clientName').textContent = client.name;
+    document.getElementById('clientNif').textContent = client.nif;
+    document.getElementById('renameBtn').style.display = '';
+  }
+
+  const reviewCount = docs.filter(d => d.status === 'a_rever').length;
+  const total = docs.reduce((sum, d) => sum + (parseFloat((d.effective_fields && d.effective_fields.O) || d.field_o) || 0), 0);
+  document.getElementById('statDocs').textContent = docs.length;
+  document.getElementById('statReview').textContent = reviewCount;
+  document.getElementById('statValue').textContent = fmtEur(total);
+
+  renderDocumentsTable();
+}
+
+async function render() {
+  if (currentClientId) {
+    document.getElementById('listView').style.display = 'none';
+    document.getElementById('detailView').style.display = '';
+    await loadDetailView();
+  } else {
+    document.getElementById('listView').style.display = '';
+    document.getElementById('detailView').style.display = 'none';
+    await loadListView();
+  }
+}
+
+async function refresh() {
+  try {
+    await render();
+  } catch (err) {
+    console.error('refresh failed', err);
+  }
+}
+
+// ---------- document actions ----------
+
+async function validateDocument(id) {
+  await fetchJSON(`/api/documents/${id}/validate`, { method: 'POST' });
+  await refresh();
+}
+
+async function bulkValidate() {
+  await fetchJSON(`/api/clients/${currentClientId}/bulk_validate`, { method: 'POST' });
+  await refresh();
+}
+
+// ---------- modals ----------
+
+function closeModal() {
+  document.getElementById('modalRoot').innerHTML = '';
+}
+
+function openRenameDialog() {
+  const client = latestClients.find(c => String(c.id) === String(currentClientId)) || {};
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <h3>${escapeHtml(t('renameTitle'))}</h3>
+        <div class="field"><label>${escapeHtml(t('fieldName'))}</label><input id="renameName" value="${escapeHtml(client.name || '')}"></div>
+        <div class="field"><label>${escapeHtml(t('fieldNotes'))}</label><textarea id="renameNotes">${escapeHtml(client.notes || '')}</textarea></div>
+        <div class="actions-row">
+          <button class="btn" onclick="closeModal()">${escapeHtml(t('cancel'))}</button>
+          <button class="btn primary" onclick="submitRename()">${escapeHtml(t('save'))}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitRename() {
+  const name = document.getElementById('renameName').value;
+  const notes = document.getElementById('renameNotes').value;
+  await fetchJSON(`/api/clients/${currentClientId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, notes }),
+  });
+  closeModal();
+  await refresh();
+}
+
+function openCorrectDialog(docId) {
+  const doc = latestDocs.find(d => d.id === docId);
+  if (!doc) return;
+  const fields = Object.assign({}, doc.all_fields || {}, doc.effective_fields || {});
+  const fieldInputs = CORRECTABLE_FIELDS.map(key => `
+    <div class="field">
+      <label>${escapeHtml(t('field' + key))}</label>
+      <input class="correct-field" data-field="${key}" value="${escapeHtml(fields[key] || '')}">
+    </div>
+  `).join('');
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <h3>${escapeHtml(t('correctTitle'))}</h3>
+        ${fieldInputs}
+        <div class="field"><label>${escapeHtml(t('fieldChangedBy'))}</label><input id="correctChangedBy" value="${escapeHtml(localStorage.getItem('qrbench_username') || '')}"></div>
+        <div class="actions-row">
+          <button class="btn" onclick="closeModal()">${escapeHtml(t('cancel'))}</button>
+          <button class="btn primary" onclick="submitCorrection(${docId})">${escapeHtml(t('saveAndValidate'))}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitCorrection(docId) {
+  const doc = latestDocs.find(d => d.id === docId);
+  const fields = Object.assign({}, doc.all_fields || {}, doc.effective_fields || {});
+  const changedBy = document.getElementById('correctChangedBy').value;
+  localStorage.setItem('qrbench_username', changedBy);
+
+  const corrections = {};
+  document.querySelectorAll('.correct-field').forEach(input => {
+    const key = input.dataset.field;
+    const newValue = input.value;
+    if (newValue !== (fields[key] || '')) {
+      corrections[key] = newValue;
+    }
+  });
+  if (Object.keys(corrections).length === 0) {
+    closeModal();
+    return;
+  }
+  await fetchJSON(`/api/documents/${docId}/correct`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ corrections, changed_by: changedBy }),
+  });
+  closeModal();
+  await refresh();
+}
+
+function openRejectDialog(docId) {
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <h3>${escapeHtml(t('rejectTitle'))}</h3>
+        <div class="field"><label>${escapeHtml(t('fieldReason'))}</label><textarea id="rejectReason"></textarea></div>
+        <div class="field"><label>${escapeHtml(t('fieldChangedBy'))}</label><input id="rejectChangedBy" value="${escapeHtml(localStorage.getItem('qrbench_username') || '')}"></div>
+        <div class="actions-row">
+          <button class="btn" onclick="closeModal()">${escapeHtml(t('cancel'))}</button>
+          <button class="btn danger" onclick="submitRejection(${docId})">${escapeHtml(t('actRejeitar'))}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function submitRejection(docId) {
+  const reason = document.getElementById('rejectReason').value;
+  const changedBy = document.getElementById('rejectChangedBy').value;
+  localStorage.setItem('qrbench_username', changedBy);
+  await fetchJSON(`/api/documents/${docId}/reject`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ reason, changed_by: changedBy }),
+  });
+  closeModal();
+  await refresh();
+}
+
+async function openExportDialog() {
+  let presets = [{ key: 'generico', label_pt: 'Genérico' }];
+  try {
+    presets = await fetchJSON('/api/export/presets');
+  } catch (err) { console.error('failed to load export presets', err); }
+
+  const presetOptions = presets.map(p => `<option value="${escapeHtml(p.key)}">${escapeHtml(p.label_pt)}</option>`).join('');
+  const clientScopeDisabled = !currentClientId ? 'disabled' : '';
+
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <h3>${escapeHtml(t('exportTitle'))}</h3>
+
+        <div class="field">
+          <label>${escapeHtml(t('exportFormat'))}</label>
+          <div class="radio-group">
+            <label><input type="radio" name="exportFormat" value="csv" checked> CSV</label>
+            <label><input type="radio" name="exportFormat" value="xlsx"> XLSX</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>${escapeHtml(t('exportScope'))}</label>
+          <div class="radio-group">
+            <label><input type="radio" name="exportScope" value="client" ${clientScopeDisabled} ${currentClientId ? 'checked' : ''}> ${escapeHtml(t('exportScopeClient'))}</label>
+            <label><input type="radio" name="exportScope" value="all" ${currentClientId ? '' : 'checked'}> ${escapeHtml(t('exportScopeAll'))}</label>
+            <label><input type="radio" name="exportScope" value="filter" ${clientScopeDisabled}> ${escapeHtml(t('exportScopeFilter'))}</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>${escapeHtml(t('exportPeriod'))}</label>
+          <div class="radio-group" style="margin-bottom:8px;">
+            <label><input type="radio" name="periodMode" value="month" checked onchange="toggleExportPeriodMode()"> ${escapeHtml(t('exportPeriodMonth'))}</label>
+            <label><input type="radio" name="periodMode" value="range" onchange="toggleExportPeriodMode()"> ${escapeHtml(t('exportPeriodRange'))}</label>
+          </div>
+          <input type="month" id="exportMonth" value="${new Date().toISOString().slice(0,7)}">
+          <div id="exportRangeFields" style="display:none; margin-top:8px; display:flex; gap:8px;">
+            <input type="date" id="exportStart">
+            <input type="date" id="exportEnd">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>${escapeHtml(t('exportStatus'))}</label>
+          <div class="checkbox-row">
+            <input type="checkbox" id="exportIncludeUnvalidated">
+            <label for="exportIncludeUnvalidated" style="text-transform:none;">${escapeHtml(t('exportIncludeUnvalidated'))}</label>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>${escapeHtml(t('exportPreset'))}</label>
+          <select id="exportPreset">${presetOptions}</select>
+        </div>
+
+        <div class="actions-row">
+          <button class="btn" onclick="closeModal()">${escapeHtml(t('cancel'))}</button>
+          <button class="btn primary" onclick="submitExport()">${escapeHtml(t('exportSubmit'))}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function toggleExportPeriodMode() {
+  const mode = document.querySelector('input[name="periodMode"]:checked').value;
+  document.getElementById('exportMonth').style.display = mode === 'month' ? '' : 'none';
+  document.getElementById('exportRangeFields').style.display = mode === 'range' ? 'flex' : 'none';
+}
+
+async function submitExport() {
+  const format = document.querySelector('input[name="exportFormat"]:checked').value;
+  const scope = document.querySelector('input[name="exportScope"]:checked').value;
+  const periodMode = document.querySelector('input[name="periodMode"]:checked').value;
+  const includeUnvalidated = document.getElementById('exportIncludeUnvalidated').checked;
+  const preset = document.getElementById('exportPreset').value;
+
+  const period = periodMode === 'month'
+    ? { mode: 'month', month: document.getElementById('exportMonth').value }
+    : { mode: 'range', start: document.getElementById('exportStart').value, end: document.getElementById('exportEnd').value };
+
+  const payload = {
+    format,
+    scope,
+    client_id: (scope === 'client' || scope === 'filter') ? currentClientId : null,
+    period,
+    status_mode: includeUnvalidated ? 'include_unvalidated' : 'validado_only',
+    preset,
+  };
+
+  const res = await fetch('/api/export', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    console.error('export failed', await res.text());
+    return;
+  }
+  const disposition = res.headers.get('Content-Disposition') || '';
+  const match = disposition.match(/filename="?([^"]+)"?/);
+  const filename = match ? match[1] : `export.${format}`;
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  closeModal();
+  await refresh();
+}
+
+// ---------- upload ----------
+
+async function uploadFiles(fileList) {
+  if (uploading || fileList.length === 0) return;
+  uploading = true;
+  const dropzoneText = document.getElementById('dropzoneText');
+  const originalHtml = dropzoneText.innerHTML;
+  dropzoneText.textContent = t('uploading', fileList.length);
+  try {
+    const formData = new FormData();
+    for (const file of fileList) formData.append('files', file);
+    await fetch('/api/upload', { method: 'POST', body: formData });
+    await refresh();
+  } catch (err) {
+    console.error('upload failed', err);
+  } finally {
+    dropzoneText.innerHTML = originalHtml;
+    uploading = false;
+  }
+}
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  uploadFiles(e.dataTransfer.files);
+});
+
+window.addEventListener('popstate', () => { parseRoute(); refresh(); });
+
+applyStaticText();
+parseRoute();
+loadFlagRegistry().then(() => {
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+});
+</script>
+</body>
+</html>

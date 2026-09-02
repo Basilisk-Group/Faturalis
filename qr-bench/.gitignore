@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+data/*.db
+data/*.db-journal
+samples/
+inbox/*
+!inbox/.gitkeep
+!inbox/_processed/
+inbox/_processed/*
+.pytest_cache/
+*.egg-info/
+uploads/

@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qr-bench</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b21;
+    --panel-2: #1e232b;
+    --border: #2a303a;
+    --text: #e6e9ef;
+    --muted: #8b93a1;
+    --accent: #5aa9ff;
+    --good: #3fbf7f;
+    --warn: #e0a83f;
+    --bad: #e0554f;
+    --mono: "SF Mono", "Fira Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+
+  #dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 22px;
+    text-align: center;
+    color: var(--muted);
+    cursor: pointer;
+    margin-bottom: 24px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  #dropzone.drag-over { border-color: var(--accent); color: var(--accent); }
+  #dropzone strong { color: var(--text); }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .card .value { font-size: 24px; font-weight: 600; }
+  .card .label { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .card .sub { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+  section { margin-bottom: 24px; }
+  section > h2 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .bar-row { display: flex; align-items: center; gap: 8px; font-size: 12px; margin-bottom: 6px; }
+  .bar-label { width: 160px; flex-shrink: 0; font-family: var(--mono); color: var(--muted); text-align: right; }
+  .bar-count { width: 32px; flex-shrink: 0; color: var(--text); }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+  td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  tr.doc-row { cursor: pointer; }
+  tr.doc-row:hover { background: var(--panel-2); }
+  tr.doc-row.marked { background: rgba(63, 191, 127, 0.05); }
+  tr.doc-row.duplicate { opacity: 0.45; }
+  tr.doc-row.duplicate:hover { opacity: 0.7; }
+  .dup-note { color: var(--muted); font-size: 11px; margin-left: 6px; }
+
+  img.thumb { width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); display: block; }
+
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .badge.decoded { background: rgba(63,191,127,0.15); color: var(--good); }
+  .badge.failed { background: rgba(224,85,79,0.15); color: var(--bad); }
+  .badge.no-qr { background: rgba(139,147,161,0.15); color: var(--muted); }
+
+  .flag-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin: 2px 4px 2px 0; cursor: pointer; border: none; font-family: inherit; }
+  .flag-badge.sev-erro { background: rgba(224,85,79,0.15); color: var(--bad); }
+  .flag-badge.sev-aviso { background: rgba(224,168,63,0.15); color: var(--warn); }
+  .flag-badge.sev-info { background: rgba(90,169,255,0.15); color: var(--accent); }
+
+  .flag-popover {
+    position: absolute; z-index: 50; max-width: 320px;
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px;
+    padding: 12px 14px; font-size: 12px; line-height: 1.5; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .flag-popover .fp-title { font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .flag-popover .fp-message { margin-bottom: 8px; color: var(--text); }
+  .flag-popover .fp-section { margin-top: 6px; }
+  .flag-popover .fp-k { display: block; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); margin-bottom: 2px; }
+
+  .glossario-link { color: var(--accent); text-decoration: none; margin-left: 4px; font-weight: 700; }
+  .glossario-link:hover { text-decoration: underline; }
+
+  .gt-buttons { display: flex; gap: 4px; }
+  .gt-buttons button {
+    font-size: 11px; padding: 3px 7px; border-radius: 5px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted); cursor: pointer;
+  }
+  .gt-buttons button.active.correct { background: rgba(63,191,127,0.2); color: var(--good); border-color: var(--good); }
+  .gt-buttons button.active.wrong { background: rgba(224,85,79,0.2); color: var(--bad); border-color: var(--bad); }
+  .gt-buttons button.active.no_qr { background: rgba(139,147,161,0.2); color: var(--text); border-color: var(--muted); }
+
+  .detail-row td { background: var(--panel-2); }
+  .detail-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 16px; margin-bottom: 12px; font-family: var(--mono); font-size: 12px; }
+  .detail-grid div span.k { color: var(--muted); margin-right: 6px; }
+  pre.raw { white-space: pre-wrap; word-break: break-all; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 10px; font-size: 11px; color: var(--accent); margin: 0; }
+
+  #exportBtn {
+    font-size: 12px; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--text); cursor: pointer; text-decoration: none; display: inline-block;
+  }
+  #exportBtn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .table-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .empty { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .lang-switch { display: flex; gap: 4px; flex-shrink: 0; }
+  .lang-switch button {
+    font-size: 11px; padding: 4px 9px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--panel-2); color: var(--muted); cursor: pointer;
+  }
+  .lang-switch button.active { background: rgba(90,169,255,0.15); color: var(--accent); border-color: var(--accent); }
+
+  .badge.cancelled { background: rgba(139,147,161,0.15); color: var(--muted); text-decoration: line-through; }
+</style>
+</head>
+<body>
+
+<div class="top-row">
+  <div>
+    <h1>qr-bench</h1>
+    <p class="subtitle" data-i18n="subtitle"></p>
+  </div>
+  <div class="lang-switch" id="langSwitch">
+    <button data-lang="pt" onclick="setLang('pt')">PT</button>
+    <button data-lang="en" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<div id="dropzone">
+  <span id="dropzoneText"></span>
+  <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.pdf" hidden>
+</div>
+
+<section>
+  <h2 data-i18n="overviewHeading"></h2>
+  <div class="cards" id="cards"></div>
+</section>
+
+<section>
+  <h2 data-i18n="strategyHeading"></h2>
+  <div class="panel" id="chart"></div>
+</section>
+
+<section>
+  <div class="table-header-row">
+    <h2 style="margin:0;" data-i18n="documentsHeading"></h2>
+    <a id="exportBtn" href="/api/export.csv" data-i18n="exportCsv"></a>
+  </div>
+  <div class="panel" style="padding:0; overflow-x:auto;">
+    <table>
+      <thead>
+        <tr>
+          <th></th>
+          <th data-i18n="colFilename"></th>
+          <th data-i18n="colStatus"></th>
+          <th data-i18n="colSupplier"></th>
+          <th data-i18n="colDate"></th>
+          <th data-i18n="colTotal"></th>
+          <th><span data-i18n="colFlags"></span><a class="glossario-link" href="/glossario" target="_blank" title="Glossário de alertas">ⓘ</a></th>
+          <th data-i18n="colGroundTruth"></th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    <div class="empty" id="emptyState" style="display:none;" data-i18n="emptyDocs"></div>
+  </div>
+</section>
+
+<script>
+const REFRESH_MS = 2000;
+let expandedId = null;
+let uploading = false;
+
+const I18N = {
+  pt: {
+    subtitle: 'Medição da fiabilidade de extração de códigos QR fiscais portugueses. Não é um produto — é um benchmark.',
+    dropzoneHtml: '<strong>Largue</strong> ficheiros .jpg / .png / .pdf aqui, ou clique para escolher. Os ficheiros também são recolhidos automaticamente a partir de <code>./inbox</code>.',
+    overviewHeading: 'Resumo',
+    strategyHeading: 'Estratégia de descodificação',
+    documentsHeading: 'Documentos',
+    exportCsv: 'Exportar CSV',
+    colFilename: 'Ficheiro',
+    colStatus: 'Estado',
+    colSupplier: 'Fornecedor',
+    colDate: 'Data',
+    colTotal: 'Total',
+    colFlags: 'Alertas',
+    colGroundTruth: 'Verdade de referência',
+    emptyDocs: 'Ainda não foram processados documentos. Largue um ficheiro acima ou adicione um a ./inbox.',
+    emptyChart: 'Ainda sem descodificações bem sucedidas.',
+    noFieldsParsed: 'Nenhum campo interpretado.',
+    noRawQr: '(sem string QR em bruto — falha na descodificação)',
+    uploading: (n) => `A carregar ${n} ficheiro(s)…`,
+    cardTotal: 'Total de documentos',
+    cardReadable: 'QR legível',
+    cardFirstAttempt: 'Descodificado à primeira tentativa',
+    cardPreprocessing: 'Necessitou de pré-processamento',
+    cardNoQr: 'Sem QR presente (heurística)',
+    cardNoQrSubAgree: (p) => `${p} concorda com a verdade de referência`,
+    cardNoQrSubNone: 'ainda sem verdade de referência marcada',
+    cardMedianTime: 'Tempo mediano de descodificação',
+    cardAccuracy: 'Precisão marcada',
+    cardAccuracySub: (n) => `${n} linhas marcadas`,
+    cardCancelled: 'Documentos anulados',
+    cardCancelledSub: (p) => `${p} do total`,
+    badgeDecoded: 'descodificado',
+    badgeFailed: 'falha na descodificação',
+    badgeNoQr: 'QR não detetado',
+    badgeCancelled: 'anulado',
+    gtCorrect: 'Correto',
+    gtWrong: 'Errado',
+    gtNoQr: 'Sem QR',
+    dupOf: (id) => `duplicado de #${id}`,
+    supplierNoName: 'registado (sem nome)',
+    supplierNotRegistered: 'não encontrado no VIES',
+    supplierUnknown: 'desconhecido',
+    supplierPending: 'a consultar…',
+    supplierDisabled: 'consulta VIES desativada',
+    withholding: (v) => `retenção: ${v}`,
+  },
+  en: {
+    subtitle: 'Measuring extraction reliability for Portuguese fiscal QR codes. Not a product — a benchmark.',
+    dropzoneHtml: '<strong>Drop</strong> .jpg / .png / .pdf files here, or click to choose. Files are also picked up automatically from <code>./inbox</code>.',
+    overviewHeading: 'Overview',
+    strategyHeading: 'Decode strategy',
+    documentsHeading: 'Documents',
+    exportCsv: 'Export CSV',
+    colFilename: 'Filename',
+    colStatus: 'Status',
+    colSupplier: 'Supplier',
+    colDate: 'Date',
+    colTotal: 'Total',
+    colFlags: 'Flags',
+    colGroundTruth: 'Ground truth',
+    emptyDocs: 'No documents processed yet. Drop a file above or add one to ./inbox.',
+    emptyChart: 'No successful decodes yet.',
+    noFieldsParsed: 'No fields parsed.',
+    noRawQr: '(no raw QR string — decode failed)',
+    uploading: (n) => `Uploading ${n} file(s)…`,
+    cardTotal: 'Total documents',
+    cardReadable: 'Readable QR',
+    cardFirstAttempt: 'Decoded first attempt',
+    cardPreprocessing: 'Needed preprocessing',
+    cardNoQr: 'No QR present (heuristic)',
+    cardNoQrSubAgree: (p) => `${p} agrees w/ ground truth`,
+    cardNoQrSubNone: 'no ground truth marked yet',
+    cardMedianTime: 'Median decode time',
+    cardAccuracy: 'Marked accuracy',
+    cardAccuracySub: (n) => `${n} rows marked`,
+    cardCancelled: 'Cancelled documents',
+    cardCancelledSub: (p) => `${p} of total`,
+    badgeDecoded: 'decoded',
+    badgeFailed: 'decode failed',
+    badgeNoQr: 'no QR detected',
+    badgeCancelled: 'cancelled',
+    gtCorrect: 'Correct',
+    gtWrong: 'Wrong',
+    gtNoQr: 'No QR',
+    dupOf: (id) => `duplicate of #${id}`,
+    supplierNoName: 'registered (no name)',
+    supplierNotRegistered: 'not found in VIES',
+    supplierUnknown: 'unknown',
+    supplierPending: 'looking up…',
+    supplierDisabled: 'VIES lookup disabled',
+    withholding: (v) => `withheld: ${v}`,
+  },
+};
+
+let currentLang = localStorage.getItem('qrbench_lang') === 'en' ? 'en' : 'pt';
+let flagRegistry = {};
+
+function t(key, ...args) {
+  const entry = (I18N[currentLang] && I18N[currentLang][key]) ?? I18N.pt[key] ?? key;
+  return typeof entry === 'function' ? entry(...args) : entry;
+}
+
+async function loadFlagRegistry() {
+  try {
+    flagRegistry = await fetchJSON('/api/flags');
+  } catch (err) {
+    console.error('failed to load flag registry', err);
+  }
+}
+
+function applyStaticText() {
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    el.textContent = t(el.getAttribute('data-i18n'));
+  });
+  document.getElementById('dropzoneText').innerHTML = t('dropzoneHtml');
+  document.documentElement.lang = currentLang === 'pt' ? 'pt-PT' : 'en';
+  document.querySelectorAll('#langSwitch button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.lang === currentLang);
+  });
+}
+
+function setLang(lang) {
+  currentLang = lang === 'en' ? 'en' : 'pt';
+  localStorage.setItem('qrbench_lang', currentLang);
+  applyStaticText();
+  if (latestStats) renderCards(latestStats);
+  if (latestStats) renderChart(latestStats);
+  renderTable(latestDocs);
+}
+
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function fmtPct(x) {
+  return (x === null || x === undefined) ? '—' : x.toFixed(1) + '%';
+}
+
+function fmtMs(x) {
+  return (x === null || x === undefined) ? '—' : Math.round(x) + ' ms';
+}
+
+function fmtDate(yyyymmdd) {
+  if (!yyyymmdd || yyyymmdd.length !== 8) return yyyymmdd || '—';
+  return `${yyyymmdd.slice(0,4)}-${yyyymmdd.slice(4,6)}-${yyyymmdd.slice(6,8)}`;
+}
+
+async function fetchJSON(url, opts) {
+  const res = await fetch(url, opts);
+  if (!res.ok) throw new Error(`${url} -> ${res.status}`);
+  return res.json();
+}
+
+function renderCards(stats) {
+  const cancelledPct = stats.total ? (100 * stats.cancelled_count / stats.total) : 0;
+  const cards = [
+    { label: t('cardTotal'), value: stats.total },
+    { label: t('cardReadable'), value: fmtPct(stats.decoded_pct) },
+    { label: t('cardFirstAttempt'), value: fmtPct(stats.first_attempt_pct) },
+    { label: t('cardPreprocessing'), value: fmtPct(stats.needed_preprocessing_pct) },
+    {
+      label: t('cardNoQr'),
+      value: fmtPct(stats.no_qr_pattern_pct),
+      sub: stats.no_qr_heuristic_accuracy !== null
+        ? t('cardNoQrSubAgree', fmtPct(stats.no_qr_heuristic_accuracy))
+        : t('cardNoQrSubNone'),
+    },
+    { label: t('cardMedianTime'), value: fmtMs(stats.median_decode_ms) },
+    {
+      label: t('cardAccuracy'),
+      value: stats.ground_truth_accuracy !== null ? fmtPct(stats.ground_truth_accuracy) : '—',
+      sub: t('cardAccuracySub', stats.ground_truth_counts.correct + stats.ground_truth_counts.wrong + stats.ground_truth_counts.no_qr),
+    },
+    {
+      label: t('cardCancelled'),
+      value: stats.cancelled_count,
+      sub: t('cardCancelledSub', fmtPct(cancelledPct)),
+    },
+  ];
+  document.getElementById('cards').innerHTML = cards.map(c => `
+    <div class="card">
+      <div class="value">${escapeHtml(c.value)}</div>
+      <div class="label">${escapeHtml(c.label)}</div>
+      ${c.sub ? `<div class="sub">${escapeHtml(c.sub)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderChart(stats) {
+  const entries = Object.entries(stats.strategy_counts || {}).sort((a, b) => b[1] - a[1]);
+  const el = document.getElementById('chart');
+  if (entries.length === 0) {
+    el.innerHTML = `<div class="empty">${escapeHtml(t('emptyChart'))}</div>`;
+    return;
+  }
+  const max = Math.max(...entries.map(e => e[1]));
+  const barMaxWidth = 320;
+  el.innerHTML = entries.map(([strategy, count]) => {
+    const width = Math.max(4, Math.round((count / max) * barMaxWidth));
+    return `
+      <div class="bar-row">
+        <span class="bar-label">${escapeHtml(strategy)}</span>
+        <svg width="${barMaxWidth}" height="14">
+          <rect x="0" y="0" width="${width}" height="14" rx="3" fill="#5aa9ff"></rect>
+        </svg>
+        <span class="bar-count">${count}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function statusBadge(doc) {
+  if (doc.cancelled) return `<span class="badge cancelled">${escapeHtml(t('badgeCancelled'))}</span>`;
+  if (doc.decode_success) return `<span class="badge decoded">${escapeHtml(t('badgeDecoded'))}</span>`;
+  if (!doc.qr_pattern_detected) return `<span class="badge no-qr">${escapeHtml(t('badgeNoQr'))}</span>`;
+  return `<span class="badge failed">${escapeHtml(t('badgeFailed'))}</span>`;
+}
+
+function supplierCell(doc) {
+  if (!doc.field_a) return '—';
+  let nameLine;
+  if (doc.supplier_status === 'found') {
+    nameLine = escapeHtml(doc.supplier_name);
+  } else if (doc.supplier_status === 'found_no_name') {
+    nameLine = `<span style="color:var(--muted)">${escapeHtml(t('supplierNoName'))}</span>`;
+  } else if (doc.supplier_status === 'not_registered') {
+    nameLine = `<span style="color:var(--muted)">${escapeHtml(t('supplierNotRegistered'))}</span>`;
+  } else if (doc.supplier_status === 'error') {
+    nameLine = `<span style="color:var(--muted)">${escapeHtml(t('supplierUnknown'))}</span>`;
+  } else if (doc.supplier_status === 'disabled') {
+    nameLine = `<span style="color:var(--muted)">${escapeHtml(t('supplierDisabled'))}</span>`;
+  } else {
+    nameLine = `<span style="color:var(--muted)">${escapeHtml(t('supplierPending'))}</span>`;
+  }
+  return `<div>${nameLine}</div><div style="font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:2px;">${escapeHtml(doc.field_a)}</div>`;
+}
+
+function gtButtons(doc) {
+  const options = [['correct', t('gtCorrect')], ['wrong', t('gtWrong')], ['no_qr', t('gtNoQr')]];
+  return `<div class="gt-buttons">` + options.map(([val, label]) => {
+    const active = doc.ground_truth === val ? `active ${val}` : '';
+    return `<button class="${active}" data-doc-id="${doc.id}" data-label="${val}" onclick="event.stopPropagation(); markGroundTruth(${doc.id}, '${val}')">${escapeHtml(label)}</button>`;
+  }).join('') + `</div>`;
+}
+
+function detailRowHtml(doc) {
+  const fields = doc.all_fields || {};
+  const rows = Object.entries(fields).map(([k, v]) => `<div><span class="k">${escapeHtml(k)}</span>${escapeHtml(v)}</div>`).join('');
+  return `
+    <tr class="detail-row"><td colspan="8">
+      <div class="detail-grid">${rows || `<div style="color:var(--muted)">${escapeHtml(t('noFieldsParsed'))}</div>`}</div>
+      <pre class="raw">${escapeHtml(doc.raw_qr) || escapeHtml(t('noRawQr'))}</pre>
+    </td></tr>
+  `;
+}
+
+function renderTable(docs) {
+  closeFlagPopover();
+  const tbody = document.getElementById('tableBody');
+  const emptyState = document.getElementById('emptyState');
+  if (docs.length === 0) {
+    tbody.innerHTML = '';
+    emptyState.style.display = 'block';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  tbody.innerHTML = docs.map(doc => {
+    const flagsHtml = flagBadges(doc);
+    const nameLabel = doc.page_number ? `${doc.filename} (p.${doc.page_number})` : doc.filename;
+    const dupNote = doc.duplicate_of ? `<span class="dup-note">${escapeHtml(t('dupOf', doc.duplicate_of))}</span>` : '';
+    const withholdingNote = doc.field_p
+      ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">${escapeHtml(t('withholding', doc.field_p))}</div>`
+      : '';
+    const rowClasses = ['doc-row'];
+    if (doc.ground_truth) rowClasses.push('marked');
+    if (doc.duplicate_of) rowClasses.push('duplicate');
+    const mainRow = `
+      <tr class="${rowClasses.join(' ')}" data-doc-id="${doc.id}" onclick="toggleExpand(${doc.id})">
+        <td><img class="thumb" src="${doc.thumbnail_b64 || ''}" alt=""></td>
+        <td>${escapeHtml(nameLabel)}${dupNote}</td>
+        <td>${statusBadge(doc)}</td>
+        <td>${supplierCell(doc)}</td>
+        <td>${fmtDate(doc.field_f)}</td>
+        <td>${escapeHtml(doc.field_o) || '—'}${withholdingNote}</td>
+        <td>${flagsHtml || '—'}</td>
+        <td>${gtButtons(doc)}</td>
+      </tr>
+    `;
+    return expandedId === doc.id ? mainRow + detailRowHtml(doc) : mainRow;
+  }).join('');
+}
+
+function toggleExpand(id) {
+  expandedId = expandedId === id ? null : id;
+  renderTable(latestDocs);
+}
+
+let pinnedPopoverKey = null;
+let popoverHideTimer = null;
+
+function findFlag(docId, flagIndex) {
+  const doc = latestDocs.find(d => d.id === docId);
+  if (!doc) return null;
+  return (doc.validation_flags || [])[flagIndex] || null;
+}
+
+function closeFlagPopover() {
+  const existing = document.getElementById('flagPopover');
+  if (existing) existing.remove();
+  pinnedPopoverKey = null;
+}
+
+function renderFlagPopoverContent(flag) {
+  const registryEntry = flagRegistry[flag.code] || {};
+  return `
+    <div class="fp-title">${escapeHtml(registryEntry.label_pt || flag.code)}</div>
+    <div class="fp-message">${escapeHtml(flag.message)}</div>
+    <div class="fp-section"><span class="fp-k">Causa</span>${escapeHtml(registryEntry.cause_pt || '')}</div>
+    <div class="fp-section"><span class="fp-k">Ação</span>${escapeHtml(registryEntry.action_pt || '')}</div>
+  `;
+}
+
+function positionPopover(popover, anchorEl) {
+  document.body.appendChild(popover);
+  const rect = anchorEl.getBoundingClientRect();
+  let left = rect.left + window.scrollX;
+  const maxLeft = window.scrollX + document.documentElement.clientWidth - popover.offsetWidth - 12;
+  left = Math.max(window.scrollX + 12, Math.min(left, maxLeft));
+  popover.style.top = `${rect.bottom + window.scrollY + 6}px`;
+  popover.style.left = `${left}px`;
+}
+
+function openFlagPopover(docId, flagIndex, anchorEl) {
+  const flag = findFlag(docId, flagIndex);
+  if (!flag) return;
+  closeFlagPopover();
+  const popover = document.createElement('div');
+  popover.id = 'flagPopover';
+  popover.className = 'flag-popover';
+  popover.innerHTML = renderFlagPopoverContent(flag);
+  popover.addEventListener('mouseenter', () => { if (popoverHideTimer) clearTimeout(popoverHideTimer); });
+  popover.addEventListener('mouseleave', () => scheduleHideFlagPopover());
+  positionPopover(popover, anchorEl);
+}
+
+function showFlagPopover(evt, docId, flagIndex) {
+  if (popoverHideTimer) { clearTimeout(popoverHideTimer); popoverHideTimer = null; }
+  if (pinnedPopoverKey) return;
+  openFlagPopover(docId, flagIndex, evt.currentTarget);
+}
+
+function scheduleHideFlagPopover() {
+  if (pinnedPopoverKey) return;
+  popoverHideTimer = setTimeout(closeFlagPopover, 200);
+}
+
+function toggleFlagPopover(evt, docId, flagIndex) {
+  const key = `${docId}:${flagIndex}`;
+  if (pinnedPopoverKey === key) {
+    closeFlagPopover();
+    return;
+  }
+  pinnedPopoverKey = key;
+  openFlagPopover(docId, flagIndex, evt.currentTarget);
+}
+
+document.addEventListener('click', (evt) => {
+  const popover = document.getElementById('flagPopover');
+  if (popover && !popover.contains(evt.target) && !evt.target.classList.contains('flag-badge')) {
+    closeFlagPopover();
+  }
+});
+
+function flagBadges(doc) {
+  return (doc.validation_flags || []).map((f, i) => {
+    const registryEntry = flagRegistry[f.code] || {};
+    const label = escapeHtml(registryEntry.label_pt || f.code);
+    return `<span class="flag-badge sev-${escapeHtml(f.severity)}"
+      onclick="event.stopPropagation(); toggleFlagPopover(event, ${doc.id}, ${i})"
+      onmouseenter="showFlagPopover(event, ${doc.id}, ${i})"
+      onmouseleave="scheduleHideFlagPopover()"
+      >${label}</span>`;
+  }).join('');
+}
+
+async function markGroundTruth(id, label) {
+  try {
+    await fetchJSON(`/api/documents/${id}/ground_truth`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ label }),
+    });
+    await refresh();
+  } catch (err) {
+    console.error('failed to mark ground truth', err);
+  }
+}
+
+let latestDocs = [];
+let latestStats = null;
+
+async function refresh() {
+  try {
+    const [stats, docs] = await Promise.all([
+      fetchJSON('/api/stats'),
+      fetchJSON('/api/documents'),
+    ]);
+    latestDocs = docs;
+    latestStats = stats;
+    renderCards(stats);
+    renderChart(stats);
+    renderTable(docs);
+  } catch (err) {
+    console.error('refresh failed', err);
+  }
+}
+
+async function uploadFiles(fileList) {
+  if (uploading || fileList.length === 0) return;
+  uploading = true;
+  const dropzoneText = document.getElementById('dropzoneText');
+  const originalHtml = dropzoneText.innerHTML;
+  dropzoneText.textContent = t('uploading', fileList.length);
+  try {
+    const formData = new FormData();
+    for (const file of fileList) formData.append('files', file);
+    await fetch('/api/upload', { method: 'POST', body: formData });
+    await refresh();
+  } catch (err) {
+    console.error('upload failed', err);
+  } finally {
+    dropzoneText.innerHTML = originalHtml;
+    uploading = false;
+  }
+}
+
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('click', () => fileInput.click());
+fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
+dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag-over'));
+dropzone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropzone.classList.remove('drag-over');
+  uploadFiles(e.dataTransfer.files);
+});
+
+applyStaticText();
+loadFlagRegistry().then(() => {
+  refresh();
+  setInterval(refresh, REFRESH_MS);
+});
+</script>
+</body>
+</html>

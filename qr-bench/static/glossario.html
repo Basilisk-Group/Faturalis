@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>qr-bench — glossário de alertas</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b21;
+    --panel-2: #1e232b;
+    --border: #2a303a;
+    --text: #e6e9ef;
+    --muted: #8b93a1;
+    --accent: #5aa9ff;
+    --good: #3fbf7f;
+    --warn: #e0a83f;
+    --bad: #e0554f;
+    --mono: "SF Mono", "Fira Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px;
+    max-width: 900px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  a.back {
+    display: inline-block; margin-bottom: 20px; color: var(--accent);
+    text-decoration: none; font-size: 13px;
+  }
+  a.back:hover { text-decoration: underline; }
+
+  .flag-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 14px;
+  }
+  .flag-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .flag-code { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .flag-label { font-size: 15px; font-weight: 600; }
+
+  .severity-badge {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+    padding: 2px 8px; border-radius: 999px;
+  }
+  .severity-badge.erro { background: rgba(224,85,79,0.15); color: var(--bad); }
+  .severity-badge.aviso { background: rgba(224,168,63,0.15); color: var(--warn); }
+  .severity-badge.info { background: rgba(90,169,255,0.15); color: var(--accent); }
+
+  .flag-row { margin-top: 6px; font-size: 13px; line-height: 1.5; }
+  .flag-row .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.03em; display: block; margin-bottom: 2px; }
+
+  .empty { color: var(--muted); padding: 40px; text-align: center; }
+</style>
+</head>
+<body>
+
+<a class="back" href="/">← Voltar ao dashboard</a>
+<h1>Glossário de alertas</h1>
+<p class="subtitle">Todos os alertas que o qr-bench pode assinalar num documento, o que significam, porque acontecem normalmente e o que fazer.</p>
+
+<div id="flags"></div>
+
+<script>
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+const SEVERITY_ORDER = { erro: 0, aviso: 1, info: 2 };
+const SEVERITY_LABEL = { erro: 'Erro', aviso: 'Aviso', info: 'Info' };
+
+async function loadFlags() {
+  const container = document.getElementById('flags');
+  try {
+    const res = await fetch('/api/flags');
+    if (!res.ok) throw new Error(`status ${res.status}`);
+    const registry = await res.json();
+    const entries = Object.values(registry).sort((a, b) => {
+      const bySeverity = (SEVERITY_ORDER[a.severity] ?? 9) - (SEVERITY_ORDER[b.severity] ?? 9);
+      return bySeverity !== 0 ? bySeverity : a.label_pt.localeCompare(b.label_pt);
+    });
+
+    if (entries.length === 0) {
+      container.innerHTML = '<div class="empty">Nenhum alerta registado.</div>';
+      return;
+    }
+
+    container.innerHTML = entries.map(f => `
+      <div class="flag-card">
+        <div class="flag-card-header">
+          <span class="severity-badge ${escapeHtml(f.severity)}">${escapeHtml(SEVERITY_LABEL[f.severity] || f.severity)}</span>
+          <span class="flag-label">${escapeHtml(f.label_pt)}</span>
+          <span class="flag-code">${escapeHtml(f.code)}</span>
+        </div>
+        <div class="flag-row"><span class="k">O que significa</span>${escapeHtml(f.explanation_pt)}</div>
+        <div class="flag-row"><span class="k">Causa habitual</span>${escapeHtml(f.cause_pt)}</div>
+        <div class="flag-row"><span class="k">O que fazer</span>${escapeHtml(f.action_pt)}</div>
+      </div>
+    `).join('');
+  } catch (err) {
+    container.innerHTML = '<div class="empty">Não foi possível carregar o glossário.</div>';
+    console.error('failed to load flag registry', err);
+  }
+}
+
+loadFlags();
+</script>
+</body>
+</html>
