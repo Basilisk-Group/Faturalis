@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192.png" />
+    <link rel="apple-touch-icon" href="assets/favicon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1b2130" />
+    <meta
+      name="description"
+      content="Faturalis: extração automática de QR codes fiscais (AT/SAF-T) de faturas e recibos, com deteção de erros, fluxo por cliente e exportação para o software de contabilidade."
+    />
+    <title>Faturalis</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="index.html">
+          <img src="assets/brand.png" alt="Faturalis" />
+        </a>
+        <nav class="nav-links">
+          <a href="#funcionalidades">Funcionalidades</a>
+          <a href="#como-funciona">Como funciona</a>
+        </nav>
+        <div class="nav-cta">
+          <a href="login.html" class="btn">Entrar</a>
+          <button class="nav-toggle" aria-label="Abrir menu">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="wrap hero-inner">
+          <span class="eyebrow">QR fiscal · AT / SAF-T</span>
+          <h1 class="display">
+            Do QR code da fatura à contabilidade,
+            <span class="accent-text">sem digitar nada.</span>
+          </h1>
+          <p class="lede">
+            Faturalis lê o QR code fiscal de faturas e recibos, mesmo digitalizados, tortos ou
+            em PDFs de várias páginas, e entrega os dados prontos a validar e exportar para o
+            seu software de contabilidade.
+          </p>
+          <div class="hero-actions">
+            <a href="login.html" class="btn btn-primary btn-lg">Aceder à plataforma</a>
+            <a href="#como-funciona" class="btn btn-lg">Ver como funciona</a>
+          </div>
+          <div class="hero-stats">
+            <div>
+              <div class="hero-stat-value">14</div>
+              <div class="hero-stat-label">estratégias de leitura combinadas por documento</div>
+            </div>
+            <div>
+              <div class="hero-stat-value">16</div>
+              <div class="hero-stat-label">sinalizadores de validação distintos</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="funcionalidades">
+        <div class="wrap">
+          <div class="section-head">
+            <span class="section-tag">Funcionalidades</span>
+            <h2 class="section-title">Feito para o dia a dia de um gabinete de contabilidade</h2>
+            <p class="section-desc">
+              Cada fatura ou recibo passa pelo mesmo processo rigoroso, quer chegue por upload
+              manual quer caia diretamente numa pasta de entrada.
+            </p>
+          </div>
+
+          <div class="feature-list">
+            <div class="feature-item">
+              <div class="feature-mark">01</div>
+              <h3 class="feature-title">Leitura robusta do QR</h3>
+              <p class="feature-body">
+                Combina várias bibliotecas de descodificação com pré-processamento de imagem
+                (escala de cinzentos, rotação, contraste) até encontrar o resultado, incluindo
+                digitalizações imperfeitas e PDFs multi-página.
+              </p>
+            </div>
+            <div class="feature-item">
+              <div class="feature-mark">02</div>
+              <h3 class="feature-title">Erros sinalizados, não escondidos</h3>
+              <p class="feature-body">
+                NIFs inválidos, totais que não batem certo, taxas de IVA atípicas, documentos
+                anulados ou duplicados: cada situação tem um sinalizador próprio, explicado em
+                português claro, nunca um erro genérico.
+              </p>
+            </div>
+            <div class="feature-item">
+              <div class="feature-mark">03</div>
+              <h3 class="feature-title">Um separador por cliente</h3>
+              <p class="feature-body">
+                Cada documento é atribuído automaticamente ao cliente certo pelo NIF do
+                adquirente, com um ciclo de vida claro: recebido, extraído, a rever, validado,
+                exportado.
+              </p>
+            </div>
+            <div class="feature-item">
+              <div class="feature-mark">04</div>
+              <h3 class="feature-title">Correções com histórico</h3>
+              <p class="feature-body">
+                Quando um valor precisa de ser ajustado à mão, fica registado num histórico de
+                auditoria, sem nunca reescrever os dados originais lidos do QR.
+              </p>
+            </div>
+            <div class="feature-item">
+              <div class="feature-mark">05</div>
+              <h3 class="feature-title">Exportação pronta a usar</h3>
+              <p class="feature-body">
+                CSV e XLSX em formato português (vírgula decimal, sem separador de milhares),
+                com uma folha extra listando os documentos sinalizados e o que fazer com cada um.
+              </p>
+            </div>
+            <div class="feature-item">
+              <div class="feature-mark">06</div>
+              <h3 class="feature-title">Alinhado com as regras da AT</h3>
+              <p class="feature-body">
+                O leitor entende o formato definido pela Autoridade Tributária para o QR code
+                das faturas, incluindo os campos opcionais de IVA por taxa e de retenção na
+                fonte, quando estão presentes.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section section-alt" id="como-funciona">
+        <div class="wrap">
+          <div class="section-head">
+            <span class="section-tag">Como funciona</span>
+            <h2 class="section-title">Quatro passos, do papel ao ficheiro exportado</h2>
+            <p class="section-desc">
+              Sem configuração complicada antes do primeiro documento.
+            </p>
+          </div>
+
+          <div class="timeline">
+            <div class="timeline-step">
+              <div class="timeline-number">01</div>
+              <h3 class="timeline-title">Carregar</h3>
+              <p class="timeline-body">
+                Arraste imagens ou PDFs, ou deixe-os cair numa pasta de entrada vigiada
+                automaticamente.
+              </p>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-number">02</div>
+              <h3 class="timeline-title">Extrair</h3>
+              <p class="timeline-body">
+                O QR fiscal é descodificado e todos os campos (NIFs, totais, IVA por taxa) são
+                estruturados de imediato.
+              </p>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-number">03</div>
+              <h3 class="timeline-title">Rever</h3>
+              <p class="timeline-body">
+                Documentos sinalizados aparecem separados dos limpos, com a explicação exata do
+                que falhou.
+              </p>
+            </div>
+            <div class="timeline-step">
+              <div class="timeline-number">04</div>
+              <h3 class="timeline-title">Exportar</h3>
+              <p class="timeline-body">
+                Um clique gera o ficheiro pronto a importar no software de contabilidade do
+                gabinete.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" style="border-bottom: none">
+        <div class="wrap cta-row">
+          <div>
+            <h2 class="cta-title">Experimente com as suas próprias faturas</h2>
+            <p class="cta-desc">
+              Aceda à plataforma e carregue um documento: o resultado, sinalizado ou limpo,
+              aparece em segundos.
+            </p>
+          </div>
+          <a href="login.html" class="btn btn-primary btn-lg">Aceder à plataforma</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="wrap footer-inner">
+        <div class="footer-brand">
+          <img src="assets/brand.png" alt="Faturalis" />
+        </div>
+        <p class="footer-note">Extração automática de QR fiscal para faturas e recibos.</p>
+        <div class="footer-links">
+          <a href="login.html">Entrar</a>
+        </div>
+      </div>
+    </footer>
+
+    <script src="assets/site.js"></script>
+  </body>
+</html>

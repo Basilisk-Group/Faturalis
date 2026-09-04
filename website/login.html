@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-PT">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/favicon-192.png" />
+    <link rel="apple-touch-icon" href="assets/favicon-192.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1b2130" />
+    <title>Faturalis</title>
+    <link rel="stylesheet" href="assets/styles.css" />
+  </head>
+  <body>
+    <header class="nav">
+      <div class="wrap nav-inner">
+        <a class="brand" href="index.html">
+          <img src="assets/brand.png" alt="Faturalis" />
+        </a>
+        <nav class="nav-links">
+          <a href="index.html#funcionalidades">Funcionalidades</a>
+          <a href="index.html#como-funciona">Como funciona</a>
+        </nav>
+        <div class="nav-cta">
+          <button class="nav-toggle" aria-label="Abrir menu">
+            <span></span><span></span><span></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main class="auth-shell">
+      <div class="auth-card">
+        <img class="auth-brand" src="assets/brand.png" alt="Faturalis" />
+        <span class="auth-demo-badge">Ambiente de demonstração</span>
+        <h1 class="auth-title">Acesso de cliente</h1>
+        <p class="auth-desc">Entre para aceder à sua área de documentos e clientes.</p>
+
+        <form id="login-form">
+          <div class="form-field">
+            <label for="login-email">Email</label>
+            <input id="login-email" type="email" placeholder="nome@escritorio.pt" required autocomplete="username" />
+          </div>
+          <div class="form-field">
+            <label for="login-password">Palavra-passe</label>
+            <input id="login-password" type="password" placeholder="••••••••" required autocomplete="current-password" />
+          </div>
+          <p id="login-status" class="form-status form-status-info"></p>
+          <button id="login-submit" type="submit" class="btn btn-primary">Entrar</button>
+        </form>
+
+        <p class="auth-footnote">
+          Qualquer email e palavra-passe são aceites nesta demonstração. Não existe autenticação
+          real nem contas de utilizador; é apenas a porta de entrada para a plataforma.
+        </p>
+      </div>
+    </main>
+
+    <script src="assets/config.js"></script>
+    <script src="assets/login.js"></script>
+    <script src="assets/site.js"></script>
+  </body>
+</html>
