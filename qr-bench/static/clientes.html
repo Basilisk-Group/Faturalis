@@ -43,12 +43,24 @@
   }
   .lang-switch button.active { background: rgba(90,169,255,0.15); color: var(--accent); border-color: var(--accent); }
 
+  .upload-row { display: flex; gap: 10px; align-items: stretch; margin-bottom: 24px; }
   #dropzone {
-    border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center;
-    color: var(--muted); cursor: pointer; margin-bottom: 24px; transition: border-color 0.15s, color 0.15s;
+    flex: 1; border: 2px dashed var(--border); border-radius: 10px; padding: 20px; text-align: center;
+    color: var(--muted); cursor: pointer; transition: border-color 0.15s, color 0.15s;
   }
   #dropzone.drag-over { border-color: var(--accent); color: var(--accent); }
   #dropzone strong { color: var(--text); }
+  .camera-btn {
+    flex: 0 0 auto; display: flex; align-items: center; justify-content: center;
+    padding: 0 18px; font-size: 13px; white-space: nowrap;
+  }
+  .camera-modal video {
+    width: 100%; border-radius: 8px; background: #000; display: block;
+  }
+  .camera-modal .camera-status { font-size: 12px; color: var(--muted); margin: 10px 0 4px; min-height: 16px; }
+  .camera-modal .camera-status.ok { color: var(--good); }
+  .camera-modal .camera-status.err { color: var(--bad); }
+  .camera-modal .camera-count { font-size: 12px; color: var(--muted); }
 
   section { margin-bottom: 24px; }
   .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
@@ -158,9 +170,13 @@
   </div>
 </div>
 
-<div id="dropzone">
-  <span id="dropzoneText"></span>
-  <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.pdf" hidden>
+<div class="upload-row">
+  <div id="dropzone">
+    <span id="dropzoneText"></span>
+    <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png,.pdf" hidden>
+  </div>
+  <button class="btn camera-btn" id="cameraBtn" type="button" data-i18n="cameraBtn"></button>
+  <input type="file" id="cameraCaptureInput" accept="image/*" capture="environment" hidden>
 </div>
 
 <div id="listView">
@@ -248,6 +264,16 @@ const I18N = {
     benchLink: 'Ferramenta de benchmark (interno)',
     dropzoneHtml: '<strong>Largue</strong> ficheiros .jpg / .png / .pdf aqui, ou clique para escolher.',
     uploading: (n) => `A carregar ${n} ficheiro(s)…`,
+    cameraBtn: '📷 Usar câmara',
+    cameraTitle: 'Digitalizar com a câmara',
+    cameraCaptureBtn: 'Tirar foto',
+    cameraSwitchBtn: 'Trocar câmara',
+    cameraDone: 'Concluir',
+    cameraScanning: 'A procurar código QR…',
+    cameraDetected: 'Código QR detetado — a carregar…',
+    cameraNoCamera: 'Não foi possível aceder à câmara.',
+    cameraPermissionDenied: 'Acesso à câmara recusado — verifique as permissões do browser.',
+    cameraCaptured: (n) => `${n} foto(s) capturada(s) nesta sessão.`,
     clientsHeading: 'Clientes',
     colClient: 'Cliente', colNif: 'NIF', colDocs: 'Documentos', colReview: 'A rever', colValue: 'Valor (período atual)',
     noClients: 'Ainda não há documentos.',
@@ -286,6 +312,16 @@ const I18N = {
     benchLink: 'Benchmark tool (internal)',
     dropzoneHtml: '<strong>Drop</strong> .jpg / .png / .pdf files here, or click to choose.',
     uploading: (n) => `Uploading ${n} file(s)…`,
+    cameraBtn: '📷 Use camera',
+    cameraTitle: 'Scan with camera',
+    cameraCaptureBtn: 'Take photo',
+    cameraSwitchBtn: 'Switch camera',
+    cameraDone: 'Done',
+    cameraScanning: 'Looking for a QR code…',
+    cameraDetected: 'QR code detected — uploading…',
+    cameraNoCamera: 'Could not access the camera.',
+    cameraPermissionDenied: 'Camera access denied — check your browser permissions.',
+    cameraCaptured: (n) => `${n} photo(s) captured this session.`,
     clientsHeading: 'Clients',
     colClient: 'Client', colNif: 'NIF', colDocs: 'Documents', colReview: 'Needs review', colValue: 'Value (current period)',
     noClients: 'No documents yet.',
@@ -884,12 +920,12 @@ async function submitExport() {
 
 // ---------- upload ----------
 
-async function uploadFiles(fileList) {
+async function uploadFiles(fileList, opts = {}) {
   if (uploading || fileList.length === 0) return;
   uploading = true;
   const dropzoneText = document.getElementById('dropzoneText');
-  const originalHtml = dropzoneText.innerHTML;
-  dropzoneText.textContent = t('uploading', fileList.length);
+  const originalHtml = dropzoneText ? dropzoneText.innerHTML : '';
+  if (!opts.silent && dropzoneText) dropzoneText.textContent = t('uploading', fileList.length);
   try {
     const formData = new FormData();
     for (const file of fileList) formData.append('files', file);
@@ -898,7 +934,7 @@ async function uploadFiles(fileList) {
   } catch (err) {
     console.error('upload failed', err);
   } finally {
-    dropzoneText.innerHTML = originalHtml;
+    if (!opts.silent && dropzoneText) dropzoneText.innerHTML = originalHtml;
     uploading = false;
   }
 }
@@ -913,6 +949,170 @@ dropzone.addEventListener('drop', (e) => {
   e.preventDefault();
   dropzone.classList.remove('drag-over');
   uploadFiles(e.dataTransfer.files);
+});
+
+// ---------- camera ----------
+// Two paths, picked per-device rather than feature-flagged by UA: getUserMedia needs a
+// secure context (https, or literally "localhost") and is unavailable to a phone hitting
+// this server over plain LAN http - which is how this tool is actually reached in practice
+// (docker-compose ships no TLS). In that case we fall back to a plain
+// <input type=file capture="environment">, which has no such restriction and just opens the
+// OS camera app. Where getUserMedia *is* available, we additionally use the native
+// BarcodeDetector API (Chrome/Edge/Android) to auto-capture the instant a QR code is in
+// frame, so an accountant can rack through a stack of paper receipts without touching the
+// screen between shots; browsers without BarcodeDetector still get the live preview plus a
+// manual "Tirar foto" button.
+
+let cameraStream = null;
+let cameraScanLoopActive = false;
+let cameraCaptureCount = 0;
+let cameraFacingMode = 'environment';
+
+function supportsLiveCamera() {
+  return window.isSecureContext && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+}
+
+function openCameraCapture() {
+  if (!supportsLiveCamera()) {
+    document.getElementById('cameraCaptureInput').click();
+    return;
+  }
+  cameraCaptureCount = 0;
+  document.getElementById('modalRoot').innerHTML = `
+    <div class="modal-backdrop" onclick="if(event.target===this) closeCameraModal()">
+      <div class="modal camera-modal">
+        <h3>${escapeHtml(t('cameraTitle'))}</h3>
+        <video id="cameraVideo" autoplay playsinline muted></video>
+        <div class="camera-status" id="cameraStatus">${escapeHtml(t('cameraScanning'))}</div>
+        <div class="camera-count" id="cameraCount"></div>
+        <div class="actions-row">
+          <button class="btn" id="cameraSwitchBtn" onclick="switchCamera()" style="display:none;">${escapeHtml(t('cameraSwitchBtn'))}</button>
+          <button class="btn" onclick="closeCameraModal()">${escapeHtml(t('cameraDone'))}</button>
+          <button class="btn primary" onclick="captureCameraFrame()">${escapeHtml(t('cameraCaptureBtn'))}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  startCameraStream(cameraFacingMode);
+}
+
+async function startCameraStream(facingMode) {
+  const statusEl = document.getElementById('cameraStatus');
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: facingMode } },
+      audio: false,
+    });
+  } catch (err) {
+    console.error('camera access failed', err);
+    if (statusEl) {
+      statusEl.textContent = err.name === 'NotAllowedError' ? t('cameraPermissionDenied') : t('cameraNoCamera');
+      statusEl.classList.add('err');
+    }
+    return;
+  }
+  // The modal can have been closed (or re-opened) while getUserMedia was pending.
+  const video = document.getElementById('cameraVideo');
+  if (!video) {
+    stream.getTracks().forEach(track => track.stop());
+    return;
+  }
+  cameraStream = stream;
+  cameraFacingMode = facingMode;
+  video.srcObject = cameraStream;
+
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoInputs = devices.filter(d => d.kind === 'videoinput');
+    const switchBtn = document.getElementById('cameraSwitchBtn');
+    if (switchBtn && videoInputs.length > 1) switchBtn.style.display = '';
+  } catch (err) {
+    // Device labels/enumeration can be withheld pre-permission on some browsers; the
+    // switch button just stays hidden rather than failing the whole camera flow.
+  }
+
+  if (window.BarcodeDetector) {
+    try {
+      const detector = new BarcodeDetector({ formats: ['qr_code'] });
+      cameraScanLoopActive = true;
+      requestAnimationFrame(() => cameraScanLoop(detector));
+    } catch (err) {
+      // Some browsers advertise BarcodeDetector but reject unsupported formats; manual
+      // capture (always wired below) still works.
+    }
+  }
+}
+
+async function cameraScanLoop(detector) {
+  if (!cameraScanLoopActive) return;
+  const video = document.getElementById('cameraVideo');
+  if (video && video.readyState >= 2 && !uploading) {
+    try {
+      const codes = await detector.detect(video);
+      if (codes.length > 0) {
+        await captureCameraFrame();
+      }
+    } catch (err) {
+      // Transient mid-stream detector errors (e.g. a frame mid-resize) are expected;
+      // just keep scanning on the next frame.
+    }
+  }
+  if (cameraScanLoopActive) requestAnimationFrame(() => cameraScanLoop(detector));
+}
+
+async function captureCameraFrame() {
+  const video = document.getElementById('cameraVideo');
+  if (!video || video.readyState < 2 || uploading) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.92));
+  if (!blob) return;
+
+  const statusEl = document.getElementById('cameraStatus');
+  if (statusEl) { statusEl.textContent = t('cameraDetected'); statusEl.classList.remove('err'); statusEl.classList.add('ok'); }
+
+  const file = new File([blob], `camera_${Date.now()}.jpg`, { type: 'image/jpeg' });
+  await uploadFiles([file], { silent: true });
+
+  cameraCaptureCount += 1;
+  const countEl = document.getElementById('cameraCount');
+  if (countEl) countEl.textContent = t('cameraCaptured', cameraCaptureCount);
+  if (statusEl && statusEl.isConnected) {
+    setTimeout(() => {
+      if (statusEl.isConnected) { statusEl.textContent = t('cameraScanning'); statusEl.classList.remove('ok'); }
+    }, 1200);
+  }
+}
+
+function switchCamera() {
+  stopCameraStream();
+  startCameraStream(cameraFacingMode === 'environment' ? 'user' : 'environment');
+}
+
+function stopCameraStream() {
+  cameraScanLoopActive = false;
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(track => track.stop());
+    cameraStream = null;
+  }
+}
+
+function closeCameraModal() {
+  stopCameraStream();
+  closeModal();
+}
+
+window.addEventListener('beforeunload', () => stopCameraStream());
+
+const cameraBtn = document.getElementById('cameraBtn');
+const cameraCaptureInput = document.getElementById('cameraCaptureInput');
+cameraBtn.addEventListener('click', openCameraCapture);
+cameraCaptureInput.addEventListener('change', () => {
+  uploadFiles(cameraCaptureInput.files);
+  cameraCaptureInput.value = '';
 });
 
 window.addEventListener('popstate', () => { parseRoute(); refresh(); });

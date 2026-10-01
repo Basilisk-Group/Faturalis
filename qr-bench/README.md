@@ -179,7 +179,21 @@ neither the dashboard nor `/glossario` hardcode any flag copy:
 
 ## Accountant workflow
 
-Open `/`. Documents are grouped by **client**, resolved automatically
+Open `/`. Besides dragging files onto the dropzone, there's a
+**"Usar câmara" / "Use camera"** button for feeding it receipts
+straight from a camera:
+- On a laptop (or any `https`/`localhost` origin), it opens a live
+  preview and, in browsers that support it (Chrome/Edge/Android),
+  auto-detects and auto-uploads a QR code the instant it's in frame —
+  point it at one receipt after another without tapping the screen.
+  A manual "Tirar foto" button covers everything else.
+- On a phone reached over a plain `http` LAN address (the realistic
+  way this tool gets used day to day — `docker compose` ships no
+  TLS), live camera access isn't available to the browser at all, so
+  the button instead opens the phone's native camera app directly;
+  the photo it takes uploads the same way a dragged-in file would.
+
+Documents are grouped by **client**, resolved automatically
 from the acquirer NIF (field `B`) on the QR code:
 
 - The first time a NIF is seen, a client is auto-created (named after
